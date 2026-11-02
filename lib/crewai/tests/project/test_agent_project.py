@@ -1,6 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
 import json
-from pathlib import Path
 
 from crewai.project import load_agent_project
 from crewai.project.json_loader import JSONProjectError, load_agent
@@ -140,7 +139,7 @@ def test_loads_config_only_agent_without_static_input(data_project, extension):
 def test_explicit_data_definition_uses_project_root_for_custom_tools(
     data_project, extension
 ):
-    path = write_agent_data(
+    write_agent_data(
         data_project, f"config/support.{extension}", tools=["custom:counter"]
     )
     with (data_project / "pyproject.toml").open("a") as config:
