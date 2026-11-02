@@ -37,10 +37,18 @@ support_agent/
 ├── uv.lock
 ├── .env.example
 ├── .gitignore
-└── README.md
+├── README.md
+├── tools/
+│   ├── __init__.py
+│   ├── support_hours.py
+│   ├── lookup_plan.py
+│   └── support_checklist.py
+└── skills/
+    ├── support-triage/SKILL.md
+    └── response-style/SKILL.md
 ```
 
-The configuration project has no source package. Add a `tools/` directory only when you need custom Python tools.
+The configuration project has no source package. The scaffold includes three local tools and two skills for a fictional support service; no extra services or credentials are needed beyond the model provider key.
 
 The generated `pyproject.toml` selects the Agent definition and packages the configuration and any local tools:
 
@@ -50,23 +58,34 @@ type = "agent"
 definition = "agent.yaml"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["agent.yaml", "tools"]
+only-include = ["agent.yaml", "tools", "skills"]
 ```
 
 ## Define the Agent
 
+The default identity is a general-purpose CrewAI Agent. Edit `role`, `goal`, and `backstory` to specialize it. The included support tools and skills are example capabilities used only when relevant; replace or remove them for other use cases.
+
 Edit `agent.yaml`:
 
 ```yaml
-role: Support assistant
-goal: Answer support questions accurately and concisely.
-backstory: >-
-  Support is available Monday to Friday, 09:00-17:00 UTC.
-  Answer hours questions using this published schedule.
+role: General-purpose AI agent
+goal: Help users accomplish tasks accurately using the available tools and skills.
+backstory: |-
+  # Identity
+  You are a general-purpose AI agent powered by CrewAI.
+
+  # Customization
+  Your behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools and skills are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.
 llm:
   model: openai/gpt-6.1-sol
   api: responses
-max_iter: 5
+tools:
+  - custom:support_hours
+  - custom:lookup_plan
+  - custom:support_checklist
+skills:
+  - ./skills
+max_iter: 8
 ```
 
 These are Agent constructor fields. Supply the request through `messages` at runtime; do not add a fixed `input` field to the definition.
@@ -82,14 +101,22 @@ The JSON scaffold creates `agent.json` with the same fields:
 
 ```json
 {
-  "role": "Support assistant",
-  "goal": "Answer support questions accurately and concisely.",
-  "backstory": "Support is available Monday to Friday, 09:00-17:00 UTC. Answer hours questions using this published schedule.",
+  "role": "General-purpose AI agent",
+  "goal": "Help users accomplish tasks accurately using the available tools and skills.",
+  "backstory": "# Identity\nYou are a general-purpose AI agent powered by CrewAI.\n\n# Customization\nYour behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools and skills are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.",
   "llm": {
     "model": "openai/gpt-6.1-sol",
     "api": "responses"
   },
-  "max_iter": 5
+  "tools": [
+    "custom:support_hours",
+    "custom:lookup_plan",
+    "custom:support_checklist"
+  ],
+  "skills": [
+    "./skills"
+  ],
+  "max_iter": 8
 }
 ```
 
@@ -101,7 +128,7 @@ Without an explicit `definition`, discovery accepts a single root `agent.py`, `a
 
 ## Add a custom tool
 
-Create `tools/support_hours.py`:
+Use the included `tools/support_hours.py` as a starting point for another tool:
 
 ```python
 from crewai.tools import BaseTool
@@ -109,20 +136,44 @@ from crewai.tools import BaseTool
 
 class SupportHoursTool(BaseTool):
     name: str = "support_hours"
-    description: str = "Return the published customer support hours."
+    description: str = "Return the fictional service's published support hours."
 
     def _run(self) -> str:
         return "Support is available Monday to Friday, 09:00-17:00 UTC."
 ```
 
-Add its reference to the YAML configuration; JSON uses the same string list:
+The generated definition explicitly registers the tools and skill directory; JSON uses the same string lists:
 
 ```yaml
 tools:
   - custom:support_hours
+  - custom:lookup_plan
+  - custom:support_checklist
+skills:
+  - ./skills
 ```
 
 `custom:support_hours` loads a `BaseTool` subclass from `tools/support_hours.py`. Add any tool dependencies to `pyproject.toml` and refresh the lockfile with `crewai install`. Only load trusted project code: custom tools and Python references execute Python during loading.
+
+## Reference tools and skills
+
+The generated examples use local, fictional data. They do not inspect accounts, reset passwords, issue refunds, or create tickets.
+
+| Tool | Input | Result |
+| --- | --- | --- |
+| `support_hours` | None | Published hours in UTC |
+| `lookup_plan` | `plan`: `starter` or `pro` | Seat allowance and support channel |
+| `support_checklist` | `topic`: `sign-in` or `billing` | Troubleshooting steps |
+
+`support-triage` guides multi-step support questions using tool results. `response-style` helps turn verified facts into a short customer reply. Skills are discovered as metadata; the Agent can use `load_skill` to load a relevant skill's instructions on demand. Add `skills/<name>/SKILL.md` with `name` and `description` frontmatter to extend the catalog.
+
+Local skill paths in YAML/JSON resolve against the project root, including when `load_agent_project(path)` is called from another directory. The Python scaffold keeps both `tools/` and `skills/` inside `src/<package>/` and anchors skills to `agent.py`. The wheel and deployment archive include these files.
+
+Try a request that combines the example capabilities:
+
+```shell Terminal
+crewai run --inputs '{"messages":"I use the Pro plan and cannot sign in. Use the support-triage and response-style skills to explain what I should try and when support is available. Write a short customer reply."}'
+```
 
 ## Pass a message history
 
@@ -150,7 +201,7 @@ print(result.raw)
 crewai deploy validate
 ```
 
-Validation loads the selected Agent without running a kickoff. It can execute project imports and initialize tools or provider clients. The normal archive pipeline includes the definition, tools, and lockfile while excluding `.env` and `.venv`.
+Validation loads the selected Agent without running a kickoff. It can execute project imports and initialize tools or provider clients. The normal archive pipeline includes the definition, tools, skills, and lockfile while excluding `.env` and `.venv`.
 
 For a deployment with a compatible preview Enterprise runtime, use the existing deployment workflow described in the [CLI reference](/edge/en/concepts/cli). The managed API accepts the same input:
 

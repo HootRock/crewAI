@@ -241,7 +241,7 @@ def _instantiate_agent_from_data(
 def load_agent(source: str | Path, *, project_root: str | Path | None = None) -> Any:
     """Load an ``Agent`` from a JSON/JSONC or YAML constructor definition.
 
-    ``project_root`` anchors local Python references and custom tools. When
+    ``project_root`` anchors local Python references, custom tools, and skill paths. When
     omitted, files in ``agents/`` retain their parent-project convention.
     Definitions contain Agent fields; kickoff messages are supplied separately.
     """
@@ -261,6 +261,16 @@ def load_agent(source: str | Path, *, project_root: str | Path | None = None) ->
         if path.parent.name == "agents"
         else path.parent
     )
+    if project_root is not None and isinstance(defn.get("skills"), list):
+        defn["skills"] = [
+            str(root / skill)
+            if isinstance(skill, str)
+            and not skill.startswith("@")
+            and not skill.lstrip().startswith(("---\n", "---\r\n"))
+            and not _is_python_ref(skill)
+            else skill
+            for skill in defn["skills"]
+        ]
     return _instantiate_agent_from_data(defn, str(path), root)
 
 

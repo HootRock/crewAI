@@ -37,10 +37,18 @@ support_agent/
 ├── uv.lock
 ├── .env.example
 ├── .gitignore
-└── README.md
+├── README.md
+├── tools/
+│   ├── __init__.py
+│   ├── support_hours.py
+│   ├── lookup_plan.py
+│   └── support_checklist.py
+└── skills/
+    ├── support-triage/SKILL.md
+    └── response-style/SKILL.md
 ```
 
-설정 기반 프로젝트에는 소스 패키지가 없습니다. 사용자 지정 Python 도구가 필요할 때만 `tools/` 디렉터리를 추가하세요.
+설정 기반 프로젝트에는 소스 패키지가 없습니다. 스캐폴드에는 가상의 지원 서비스를 위한 로컬 도구 세 개와 스킬 두 개가 포함됩니다. 모델 공급자 키 외에 추가 서비스나 인증 정보가 필요하지 않습니다.
 
 생성된 `pyproject.toml`은 Agent 정의를 선택하고 설정과 로컬 도구를 패키지에 포함합니다:
 
@@ -50,23 +58,34 @@ type = "agent"
 definition = "agent.yaml"
 
 [tool.hatch.build.targets.wheel]
-only-include = ["agent.yaml", "tools"]
+only-include = ["agent.yaml", "tools", "skills"]
 ```
 
 ## Agent 정의하기
 
+기본 정체성은 CrewAI 기반의 범용 Agent입니다. `role`, `goal`, `backstory`를 수정해 특화하세요. 포함된 지원 도구와 스킬은 관련된 요청에만 사용하는 예제 기능이며, 다른 용도에는 교체하거나 제거할 수 있습니다.
+
 `agent.yaml`을 편집합니다:
 
 ```yaml
-role: Support assistant
-goal: Answer support questions accurately and concisely.
-backstory: >-
-  Support is available Monday to Friday, 09:00-17:00 UTC.
-  Answer hours questions using this published schedule.
+role: General-purpose AI agent
+goal: Help users accomplish tasks accurately using the available tools and skills.
+backstory: |-
+  # Identity
+  You are a general-purpose AI agent powered by CrewAI.
+
+  # Customization
+  Your behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools and skills are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.
 llm:
   model: openai/gpt-6.1-sol
   api: responses
-max_iter: 5
+tools:
+  - custom:support_hours
+  - custom:lookup_plan
+  - custom:support_checklist
+skills:
+  - ./skills
+max_iter: 8
 ```
 
 이 항목들은 Agent 생성자 필드입니다. 요청은 실행 시 `messages`로 전달하세요. 정의에 고정된 `input` 필드를 추가하지 마세요.
@@ -82,14 +101,22 @@ JSON 프로젝트 템플릿은 동일한 필드를 가진 `agent.json`을 생성
 
 ```json
 {
-  "role": "Support assistant",
-  "goal": "Answer support questions accurately and concisely.",
-  "backstory": "Support is available Monday to Friday, 09:00-17:00 UTC. Answer hours questions using this published schedule.",
+  "role": "General-purpose AI agent",
+  "goal": "Help users accomplish tasks accurately using the available tools and skills.",
+  "backstory": "# Identity\nYou are a general-purpose AI agent powered by CrewAI.\n\n# Customization\nYour behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools and skills are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.",
   "llm": {
     "model": "openai/gpt-6.1-sol",
     "api": "responses"
   },
-  "max_iter": 5
+  "tools": [
+    "custom:support_hours",
+    "custom:lookup_plan",
+    "custom:support_checklist"
+  ],
+  "skills": [
+    "./skills"
+  ],
+  "max_iter": 8
 }
 ```
 
@@ -101,7 +128,7 @@ Python 프로젝트 템플릿은 `src/python_support/agent.py`에서 `agent = Ag
 
 ## 사용자 지정 도구 추가하기
 
-`tools/support_hours.py`를 만듭니다:
+포함된 `tools/support_hours.py`를 새 도구의 출발점으로 사용하세요:
 
 ```python
 from crewai.tools import BaseTool
@@ -109,20 +136,44 @@ from crewai.tools import BaseTool
 
 class SupportHoursTool(BaseTool):
     name: str = "support_hours"
-    description: str = "Return the published customer support hours."
+    description: str = "Return the fictional service's published support hours."
 
     def _run(self) -> str:
         return "Support is available Monday to Friday, 09:00-17:00 UTC."
 ```
 
-YAML 설정에 도구 참조를 추가합니다. JSON도 동일한 문자열 목록을 사용합니다:
+생성된 정의는 도구와 스킬 디렉터리를 명시적으로 등록합니다. JSON도 동일한 문자열 목록을 사용합니다:
 
 ```yaml
 tools:
   - custom:support_hours
+  - custom:lookup_plan
+  - custom:support_checklist
+skills:
+  - ./skills
 ```
 
 `custom:support_hours`는 `tools/support_hours.py`에서 `BaseTool` 하위 클래스를 로드합니다. 도구에 필요한 의존성을 `pyproject.toml`에 추가하고 `crewai install`로 잠금 파일을 갱신하세요. 신뢰할 수 있는 프로젝트 코드만 로드하세요. 사용자 지정 도구와 Python 참조는 로딩 중 Python 코드를 실행합니다.
+
+## 참조 도구와 스킬
+
+생성된 예제는 로컬의 가상 데이터를 사용합니다. 실제 계정을 조회하거나 비밀번호를 재설정하거나 환불하거나 티켓을 만들지 않습니다.
+
+| 도구 | 입력 | 결과 |
+| --- | --- | --- |
+| `support_hours` | 없음 | UTC 기준으로 공지된 지원 시간 |
+| `lookup_plan` | `plan`: `starter` 또는 `pro` | 좌석 수와 지원 채널 |
+| `support_checklist` | `topic`: `sign-in` 또는 `billing` | 문제 해결 단계 |
+
+`support-triage`는 도구 결과를 활용하는 여러 단계의 지원 질문을 안내합니다. `response-style`은 검증된 사실을 짧은 고객 답변으로 정리합니다. 스킬은 메타데이터로 검색되며, Agent는 `load_skill`로 관련 스킬의 지침을 필요할 때 로드할 수 있습니다. 카탈로그를 확장하려면 `name`과 `description` 프런트매터를 포함한 `skills/<name>/SKILL.md`를 추가하세요.
+
+YAML/JSON의 로컬 스킬 경로는 프로젝트 루트를 기준으로 해석됩니다. 다른 디렉터리에서 `load_agent_project(path)`를 호출해도 동일합니다. Python 스캐폴드는 `tools/`와 `skills/`를 모두 `src/<package>/` 안에 두고 `agent.py`를 기준으로 스킬 경로를 지정합니다. wheel과 배포 아카이브에 이 파일들이 포함됩니다.
+
+예제 기능을 함께 사용하는 요청을 실행해 보세요:
+
+```shell Terminal
+crewai run --inputs '{"messages":"I use the Pro plan and cannot sign in. Use the support-triage and response-style skills to explain what I should try and when support is available. Write a short customer reply."}'
+```
 
 ## 메시지 기록 전달하기
 
@@ -150,7 +201,7 @@ print(result.raw)
 crewai deploy validate
 ```
 
-검증은 kickoff를 실행하지 않고 선택한 Agent를 로드합니다. 이 과정에서 프로젝트 코드를 가져오고 도구나 공급자 클라이언트를 초기화할 수 있습니다. 일반적인 아카이브 생성 과정은 정의, 도구, 잠금 파일을 포함하고 `.env`와 `.venv`는 제외합니다.
+검증은 kickoff를 실행하지 않고 선택한 Agent를 로드합니다. 이 과정에서 프로젝트 코드를 가져오고 도구나 공급자 클라이언트를 초기화할 수 있습니다. 일반적인 아카이브 생성 과정은 정의, 도구, 스킬, 잠금 파일을 포함하고 `.env`와 `.venv`는 제외합니다.
 
 호환되는 미리 보기 Enterprise 런타임에 배포하려면 [CLI 참조](/edge/ko/concepts/cli)에 설명된 기존 배포 절차를 사용하세요. 관리형 API는 동일한 입력을 받습니다:
 

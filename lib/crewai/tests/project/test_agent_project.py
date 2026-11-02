@@ -136,6 +136,32 @@ def test_loads_config_only_agent_without_static_input(data_project, extension):
 
 
 @pytest.mark.parametrize("extension", ["json", "yml", "yaml"])
+def test_project_skill_paths_are_independent_of_cwd(
+    data_project, extension, monkeypatch, tmp_path
+):
+    write_agent_data(
+        data_project,
+        f"agent.{extension}",
+        skills=[
+            "./skills",
+            "---\nname: inline-style\ndescription: Write clear answers.\n---\nBe concise.",
+        ],
+    )
+    skill = data_project / "skills" / "support-policy"
+    skill.mkdir(parents=True)
+    (skill / "SKILL.md").write_text(
+        "---\nname: support-policy\ndescription: Handle support questions.\n---\nUse the published support hours.\n"
+    )
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.chdir(elsewhere)
+
+    agent = load_agent_project(data_project)
+
+    assert {skill.name for skill in agent.skills} == {"support-policy", "inline-style"}
+
+
+@pytest.mark.parametrize("extension", ["json", "yml", "yaml"])
 def test_explicit_data_definition_uses_project_root_for_custom_tools(
     data_project, extension
 ):

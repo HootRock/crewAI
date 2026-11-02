@@ -11,6 +11,7 @@ from crewai_cli.create_agent import create_agent
 from crewai_cli.deploy.validate import DeployValidator
 from crewai_core import plus_api
 import pytest
+import yaml
 
 
 @pytest.fixture(params=["json", "yaml"])
@@ -18,6 +19,11 @@ def project(request, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     create_agent("support_agent", format=request.param)
     root = tmp_path / "support_agent"
+    definition = root / f"agent.{request.param}"
+    data = yaml.safe_load(definition.read_text())
+    data.pop("tools")
+    data.pop("skills")
+    definition.write_text(json.dumps(data))
     (root / ".env").write_text("OPENAI_API_KEY=test-placeholder-key\n")
     return root
 

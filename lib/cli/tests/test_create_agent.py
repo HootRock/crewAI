@@ -70,6 +70,8 @@ def test_agent_archive_includes_source_and_excludes_secrets(
         with zipfile.ZipFile(archive) as project_zip:
             names = project_zip.namelist()
             assert "src/support_agent/agent.py" in names
+            assert "src/support_agent/tools/lookup_plan.py" in names
+            assert "src/support_agent/skills/support-triage/SKILL.md" in names
             assert "pyproject.toml" in names
             assert ".env.example" in names
             assert ".env" not in names
@@ -216,16 +218,19 @@ def test_create_config_agent_loads_and_archives_without_source_package(
     assert config["tool"]["hatch"]["build"]["targets"]["wheel"]["only-include"] == [
         definition,
         "tools",
+        "skills",
     ]
     assert not (root / "src").exists()
     agent = load_agent_project(root)
-    assert agent.role == "Support assistant"
+    assert agent.role == "General-purpose AI agent"
     assert agent.llm.model == "gpt-6.1-sol"
     assert agent.llm.api == "responses"
     archive = create_project_zip("config_agent", project_dir=root)
     try:
         with zipfile.ZipFile(archive) as project_zip:
             assert definition in project_zip.namelist()
+            assert "tools/lookup_plan.py" in project_zip.namelist()
+            assert "skills/support-triage/SKILL.md" in project_zip.namelist()
             assert not any(name.startswith("src/") for name in project_zip.namelist())
     finally:
         archive.unlink()
@@ -254,7 +259,7 @@ def test_config_agent_runs_same_loader_and_preserves_inputs(
     async def kickoff(self: Agent, **kwargs: Any) -> Any:
         from types import SimpleNamespace
 
-        assert self.role == "Support assistant"
+        assert self.role == "General-purpose AI agent"
         received.append(kwargs["messages"])
         return SimpleNamespace(raw="finished")
 
@@ -262,6 +267,44 @@ def test_config_agent_runs_same_loader_and_preserves_inputs(
     run_agent(json.dumps({"messages": messages}))
     assert received == [messages]
     assert capsys.readouterr().out.endswith("finished\n")
+
+
+@pytest.mark.parametrize("format", ["yaml", "json", "python"])
+def test_reference_scaffold_tools_and_skills_work_outside_project_root(
+    format, tmp_path, monkeypatch
+):
+    import json
+
+    from crewai.project import load_agent_project
+    from crewai.skills.models import METADATA
+    from crewai.skills.tool import create_skill_loader_tool
+    from crewai_cli.create_agent import create_agent
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder-key")
+    create_agent("reference_agent", format=format)
+    agent = load_agent_project(tmp_path / "reference_agent")
+    assert agent.role == "General-purpose AI agent"
+    assert "powered by CrewAI" in agent.backstory
+    assert "use them only when relevant" in agent.backstory
+    tools = {tool.name: tool for tool in agent.tools}
+    assert "09:00-17:00 UTC" in tools["support_hours"].run()
+    assert json.loads(tools["lookup_plan"].run(plan=" Pro ")) == {
+        "plan": "pro",
+        "seats": 5,
+        "support": "priority email",
+    }
+    assert "error" in json.loads(tools["lookup_plan"].run(plan="unknown"))
+    checklist = json.loads(tools["support_checklist"].run(topic="sign-in"))
+    assert len(checklist["steps"]) == 3
+    assert "SSO" in checklist["steps"][0]
+    assert "error" in json.loads(tools["support_checklist"].run(topic="unknown"))
+    assert {skill.name for skill in agent.skills} == {"support-triage", "response-style"}
+    assert all(skill.disclosure_level == METADATA for skill in agent.skills)
+    loader = create_skill_loader_tool(agent.skills, source=agent)
+    instructions = loader.run(skill_name="support-triage")
+    assert "lookup_plan" in instructions and "support_checklist" in instructions
+    assert "three immediate next steps" in loader.run(skill_name="response-style")
 
 
 @pytest.mark.parametrize("suffix", ["json", "yml", "yaml"])
@@ -286,7 +329,7 @@ def test_config_agent_validates_without_package_directory(
             "role: Support assistant\ngoal: Help users\nbackstory: A helpful support agent\nllm: openai/gpt-4o-mini\n"
         )
     else:
-        assert json.loads(definition.read_text())["role"] == "Support assistant"
+        assert json.loads(definition.read_text())["role"] == "General-purpose AI agent"
     (root / ".env").write_text("OPENAI_API_KEY=test-placeholder-key\n")
     (root / "uv.lock").write_text("# installed test environment")
     subprocess_run = subprocess.run

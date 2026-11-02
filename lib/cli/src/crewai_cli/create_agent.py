@@ -24,7 +24,9 @@ def create_agent(name: str, *, format: str = "yaml") -> None:
 
     template_root = Path(__file__).parent / "templates"
     templates_dir = template_root / ("agent" if format == "python" else "agent_config")
+    assets_dir = template_root / "agent_assets"
     templates = list(templates_dir.rglob("*"))
+    templates.extend(assets_dir.rglob("*"))
     if format != "python":
         templates.extend(
             template_root / "agent" / name for name in (".env.example", ".gitignore")
@@ -32,11 +34,16 @@ def create_agent(name: str, *, format: str = "yaml") -> None:
     for template in templates:
         if not template.is_file() or template.suffix in {".pyc", ".pyo"}:
             continue
-        relative = (
-            template.relative_to(templates_dir)
-            if template.is_relative_to(templates_dir)
-            else Path(template.name)
-        )
+        if template.is_relative_to(assets_dir):
+            relative = template.relative_to(assets_dir)
+            if format == "python":
+                relative = Path("src") / package_name / relative
+        else:
+            relative = (
+                template.relative_to(templates_dir)
+                if template.is_relative_to(templates_dir)
+                else Path(template.name)
+            )
         if (
             format != "python"
             and relative.name in {"agent.json", "agent.yaml"}
