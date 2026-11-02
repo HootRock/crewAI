@@ -16,6 +16,7 @@ from crewai_cli.run_crew import (
     _project_run_command,
     _project_runner_code,
     load_project_env,
+    stops_run_as,
 )
 from crewai_cli.utils import build_env_with_all_tool_credentials
 
@@ -67,8 +68,10 @@ def _agent_messages(inputs: str | None) -> Any:
 
 def run_agent_in_project_env(inputs: str | None) -> None:
     """Run a standalone Agent using its project environment."""
-    _agent_messages(inputs)
-    _install_project_dependencies_if_needed()
+    with stops_run_as("invalid_inputs"):
+        _agent_messages(inputs)
+    with stops_run_as("install_failed"):
+        _install_project_dependencies_if_needed()
     command = _project_run_command(_AGENT_RUNNER_CODE)
     env = build_env_with_all_tool_credentials()
     env[_CREWAI_CLI_RUNNER_PACKAGE_DIR_ENV] = str(Path(__file__).resolve().parent)
