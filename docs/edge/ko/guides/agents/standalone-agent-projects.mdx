@@ -17,7 +17,9 @@ cd support_agent
 cp .env.example .env
 ```
 
-기본 모델인 `openai/gpt-4o-mini`를 사용하도록 `.env`에 `OPENAI_API_KEY`를 설정한 다음 설치하고 실행합니다:
+기본 모델인 `openai/gpt-6.1-sol`를 사용하도록 `.env`에 `OPENAI_API_KEY`를 설정한 다음 설치하고 실행합니다:
+
+스캐폴드는 이 모델의 도구 호출에 Responses API(`api: responses`)를 사용합니다. YAML/JSON 프로젝트에서는 정의 파일의 `llm.model`과 `llm.api`를 수정하세요. Python 템플릿은 `.env`에서 `MODEL`을 읽고 Responses API를 사용합니다.
 
 ```shell Terminal
 crewai install
@@ -61,7 +63,9 @@ goal: Answer support questions accurately and concisely.
 backstory: >-
   Support is available Monday to Friday, 09:00-17:00 UTC.
   Answer hours questions using this published schedule.
-llm: openai/gpt-4o-mini
+llm:
+  model: openai/gpt-6.1-sol
+  api: responses
 max_iter: 5
 ```
 
@@ -81,7 +85,10 @@ JSON 프로젝트 템플릿은 동일한 필드를 가진 `agent.json`을 생성
   "role": "Support assistant",
   "goal": "Answer support questions accurately and concisely.",
   "backstory": "Support is available Monday to Friday, 09:00-17:00 UTC. Answer hours questions using this published schedule.",
-  "llm": "openai/gpt-4o-mini",
+  "llm": {
+    "model": "openai/gpt-6.1-sol",
+    "api": "responses"
+  },
   "max_iter": 5
 }
 ```

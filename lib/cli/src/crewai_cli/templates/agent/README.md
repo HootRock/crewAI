@@ -5,6 +5,7 @@ Standalone agent project formats and CLI support may change.
 
 Create this Python layout explicitly with `crewai create agent {{package_name}} --format python`.
 The default `crewai create agent {{package_name}}` creates a YAML definition instead.
+The agent defaults to `openai/gpt-6.1-sol` through the Responses API. Set `MODEL` in `.env` to choose another OpenAI model.
 
 ```text
 {{package_name}}/

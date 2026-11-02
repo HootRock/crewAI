@@ -17,7 +17,9 @@ cd support_agent
 cp .env.example .env
 ```
 
-Set `OPENAI_API_KEY` in `.env` for the default `openai/gpt-4o-mini` model, then install and run:
+Set `OPENAI_API_KEY` in `.env` for the default `openai/gpt-6.1-sol` model, then install and run:
+
+The scaffold selects the Responses API (`api: responses`) for tool calling with this model. In YAML/JSON projects, edit `llm.model` and `llm.api` in the definition; the Python template reads `MODEL` from `.env` and selects the Responses API.
 
 ```shell Terminal
 crewai install
@@ -61,7 +63,9 @@ goal: Answer support questions accurately and concisely.
 backstory: >-
   Support is available Monday to Friday, 09:00-17:00 UTC.
   Answer hours questions using this published schedule.
-llm: openai/gpt-4o-mini
+llm:
+  model: openai/gpt-6.1-sol
+  api: responses
 max_iter: 5
 ```
 
@@ -81,7 +85,10 @@ The JSON scaffold creates `agent.json` with the same fields:
   "role": "Support assistant",
   "goal": "Answer support questions accurately and concisely.",
   "backstory": "Support is available Monday to Friday, 09:00-17:00 UTC. Answer hours questions using this published schedule.",
-  "llm": "openai/gpt-4o-mini",
+  "llm": {
+    "model": "openai/gpt-6.1-sol",
+    "api": "responses"
+  },
   "max_iter": 5
 }
 ```

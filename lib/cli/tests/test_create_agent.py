@@ -25,8 +25,9 @@ def agent_project(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return tmp_path / "support_agent"
 
 
+@pytest.mark.parametrize("model", [None, "openai/gpt-4o-mini"])
 def test_create_agent_exports_installable_agent(
-    agent_project: Path, monkeypatch: pytest.MonkeyPatch
+    agent_project: Path, monkeypatch: pytest.MonkeyPatch, model: str | None
 ) -> None:
     from crewai import Agent
     from crewai.project import load_agent_project
@@ -46,8 +47,14 @@ def test_create_agent_exports_installable_agent(
     assert not (package / "crew.py").exists()
     assert not (package / "config").exists()
     monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder-key")
+    if model is None:
+        monkeypatch.delenv("MODEL", raising=False)
+    else:
+        monkeypatch.setenv("MODEL", model)
     agent = load_agent_project(agent_project)
     assert isinstance(agent, Agent)
+    assert agent.llm.model == ("gpt-6.1-sol" if model is None else "gpt-4o-mini")
+    assert agent.llm.api == "responses"
     assert (
         agent.tools[0].run()
         == "Support is available Monday to Friday, 09:00-17:00 UTC."
@@ -211,7 +218,10 @@ def test_create_config_agent_loads_and_archives_without_source_package(
         "tools",
     ]
     assert not (root / "src").exists()
-    assert load_agent_project(root).role == "Support assistant"
+    agent = load_agent_project(root)
+    assert agent.role == "Support assistant"
+    assert agent.llm.model == "gpt-6.1-sol"
+    assert agent.llm.api == "responses"
     archive = create_project_zip("config_agent", project_dir=root)
     try:
         with zipfile.ZipFile(archive) as project_zip:

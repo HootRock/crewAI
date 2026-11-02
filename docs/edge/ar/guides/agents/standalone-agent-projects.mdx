@@ -17,7 +17,9 @@ cd support_agent
 cp .env.example .env
 ```
 
-اضبط `OPENAI_API_KEY` في `.env` للنموذج الافتراضي `openai/gpt-4o-mini`، ثم ثبّت المشروع وشغّله:
+اضبط `OPENAI_API_KEY` في `.env` للنموذج الافتراضي `openai/gpt-6.1-sol`، ثم ثبّت المشروع وشغّله:
+
+يختار القالب Responses API (`api: responses`) لاستدعاء الأدوات بهذا النموذج. في مشاريع YAML/JSON، عدّل `llm.model` و`llm.api` في التعريف؛ أما قالب Python فيقرأ `MODEL` من `.env` ويختار Responses API.
 
 ```shell Terminal
 crewai install
@@ -61,7 +63,9 @@ goal: Answer support questions accurately and concisely.
 backstory: >-
   Support is available Monday to Friday, 09:00-17:00 UTC.
   Answer hours questions using this published schedule.
-llm: openai/gpt-4o-mini
+llm:
+  model: openai/gpt-6.1-sol
+  api: responses
 max_iter: 5
 ```
 
@@ -81,7 +85,10 @@ crewai create agent python_support --format python
   "role": "Support assistant",
   "goal": "Answer support questions accurately and concisely.",
   "backstory": "Support is available Monday to Friday, 09:00-17:00 UTC. Answer hours questions using this published schedule.",
-  "llm": "openai/gpt-4o-mini",
+  "llm": {
+    "model": "openai/gpt-6.1-sol",
+    "api": "responses"
+  },
   "max_iter": 5
 }
 ```

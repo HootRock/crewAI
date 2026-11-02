@@ -1,6 +1,6 @@
 import os
 
-from crewai import Agent
+from crewai import Agent, LLM
 from crewai.tools import tool
 
 
@@ -14,7 +14,7 @@ agent = Agent(
     role="Support assistant",
     goal="Answer support questions accurately using the available tools.",
     backstory="You are a concise support assistant. Use support_hours for questions about hours.",
-    llm=os.getenv("MODEL", "openai/gpt-4o-mini"),
+    llm=LLM(model=os.getenv("MODEL", "openai/gpt-6.1-sol"), api="responses"),
     tools=[support_hours],
     max_iter=5,
 )

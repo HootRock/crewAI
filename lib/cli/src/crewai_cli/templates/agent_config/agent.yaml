@@ -3,5 +3,7 @@ goal: Answer support questions accurately and concisely.
 backstory: >-
   Support is available Monday to Friday, 09:00-17:00 UTC.
   Answer hours questions using this published schedule.
-llm: openai/gpt-4o-mini
+llm:
+  model: openai/gpt-6.1-sol
+  api: responses
 max_iter: 5
