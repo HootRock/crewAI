@@ -829,9 +829,13 @@ class DeployValidator:
             "    kind = sys.argv[2]\n"
             "    if kind == 'agent':\n"
             "        from pathlib import Path\n"
-            "        from crewai_cli.run_crew import load_project_env\n"
-            "        load_project_env(Path(sys.argv[1]) / '.env')\n"
-            "        from crewai.project import load_agent_project\n"
+            "        search_path = sys.path[:]\n"
+            "        sys.path[:] = [e for e in sys.path if e not in ('', os.getcwd())]\n"
+            "        try:\n"
+            "            module.load_project_env(Path(sys.argv[1]) / '.env')\n"
+            "            from crewai.project import load_agent_project\n"
+            "        finally:\n"
+            "            sys.path[:] = search_path\n"
             "        instances = [load_agent_project(sys.argv[1])]\n"
             "    else:\n"
             "        from crewai.utilities.project_utils import get_crews, get_flows\n"
@@ -856,6 +860,24 @@ class DeployValidator:
             )
             return
 
+        env = None
+        if self._is_agent:
+            from crewai_cli.run_crew import (
+                _CREWAI_CLI_RUNNER_PACKAGE_DIR_ENV,
+                _CREWAI_RUNNER_SOURCE_DIR_ENV,
+                _find_local_crewai_source_dir,
+                _project_runner_code,
+            )
+
+            # Pin AMP transport before .env and load the CLI from its trusted path.
+            script = _project_runner_code("run_crew", script)
+            env = os.environ.copy()
+            env[_CREWAI_CLI_RUNNER_PACKAGE_DIR_ENV] = str(
+                Path(__file__).resolve().parents[1]
+            )
+            if source_dir := _find_local_crewai_source_dir():
+                env[_CREWAI_RUNNER_SOURCE_DIR_ENV] = str(source_dir)
+
         try:
             proc = subprocess.run(  # noqa: S603 - args constructed from trusted inputs
                 [
@@ -869,6 +891,7 @@ class DeployValidator:
                     "agent" if self._is_agent else "flow" if self._is_flow else "crew",
                 ],
                 cwd=self.project_root,
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=120,
