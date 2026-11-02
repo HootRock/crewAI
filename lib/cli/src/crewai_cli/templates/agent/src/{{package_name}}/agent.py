@@ -1,6 +1,6 @@
 import os
 
-from crewai import Agent, LLM
+from crewai import LLM, Agent
 from crewai.tools import tool
 
 
