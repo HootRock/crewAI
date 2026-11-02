@@ -44,11 +44,10 @@ support_agent/
 │   ├── lookup_plan.py
 │   └── support_checklist.py
 └── skills/
-    ├── support-triage/SKILL.md
-    └── response-style/SKILL.md
+    └── .gitkeep
 ```
 
-O projeto baseado em configuração não tem um pacote de código-fonte. O scaffold inclui três ferramentas locais e duas skills para um serviço de suporte fictício; nenhum serviço ou credencial adicional é necessário além da chave do provedor do modelo.
+O projeto baseado em configuração não tem um pacote de código-fonte. O scaffold inclui três ferramentas locais para um serviço de suporte fictício e um diretório de skills vazio; nenhum serviço ou credencial adicional é necessário além da chave do provedor do modelo.
 
 O arquivo `pyproject.toml` gerado seleciona a definição do Agent e inclui a configuração e quaisquer ferramentas locais no pacote:
 
@@ -63,7 +62,7 @@ only-include = ["agent.yaml", "tools", "skills"]
 
 ## Definir o Agent
 
-A identidade padrão é um Agent de propósito geral baseado em CrewAI. Edite `role`, `goal` e `backstory` para especializá-lo. As ferramentas e skills de suporte incluídas são exemplos usados apenas quando relevantes; substitua ou remova esses recursos para outros casos de uso.
+A identidade padrão é um Agent CrewAI de uso geral. Edite `role`, `goal` e `backstory` para especializá-lo. As ferramentas de suporte incluídas são exemplos usados apenas quando relevantes; substitua ou remova conforme o caso de uso. Nenhuma skill é instalada por padrão.
 
 Edite `agent.yaml`:
 
@@ -75,7 +74,7 @@ backstory: |-
   You are a general-purpose AI agent powered by CrewAI.
 
   # Customization
-  Your behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools and skills are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.
+  Your behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.
 llm:
   model: openai/gpt-6.1-sol
   api: responses
@@ -103,7 +102,7 @@ O modelo de projeto JSON cria `agent.json` com os mesmos campos:
 {
   "role": "General-purpose AI agent",
   "goal": "Help users accomplish tasks accurately using the available tools and skills.",
-  "backstory": "# Identity\nYou are a general-purpose AI agent powered by CrewAI.\n\n# Customization\nYour behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools and skills are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.",
+  "backstory": "# Identity\nYou are a general-purpose AI agent powered by CrewAI.\n\n# Customization\nYour behavior and capabilities are defined by this project's agent definition, tools, and skills. Customize these files for the user's needs. The included support tools are examples; use them only when relevant. Be clear about the capabilities available in this project and do not claim external actions without a tool result.",
   "llm": {
     "model": "openai/gpt-6.1-sol",
     "api": "responses"
@@ -165,14 +164,14 @@ Os exemplos gerados usam dados locais fictícios. Eles não consultam contas, re
 | `lookup_plan` | `plan`: `starter` ou `pro` | Limite de assentos e canal de suporte |
 | `support_checklist` | `topic`: `sign-in` ou `billing` | Etapas de solução de problemas |
 
-`support-triage` orienta perguntas de suporte com várias etapas usando os resultados das ferramentas. `response-style` transforma fatos verificados em uma resposta curta ao cliente. As skills são descobertas como metadados; o Agent pode usar `load_skill` para carregar as instruções de uma skill relevante sob demanda. Adicione `skills/<name>/SKILL.md` com `name` e `description` no frontmatter para ampliar o catálogo.
+O diretório `skills/` começa vazio, com apenas `.gitkeep` para preservá-lo no Git e nos pacotes gerados. Adicione `skills/<name>/SKILL.md` com `name` e `description` no frontmatter para criar uma skill. As skills adicionadas são descobertas como metadados; o Agent pode usar `load_skill` para carregar instruções relevantes sob demanda.
 
 Caminhos locais de skills em YAML/JSON são resolvidos a partir da raiz do projeto, inclusive quando `load_agent_project(path)` é chamado de outro diretório. O scaffold Python mantém `tools/` e `skills/` dentro de `src/<package>/` e ancora as skills em `agent.py`. O wheel e o arquivo de implantação incluem esses arquivos.
 
 Experimente uma solicitação que combine os recursos do exemplo:
 
 ```shell Terminal
-crewai run --inputs '{"messages":"I use the Pro plan and cannot sign in. Use the support-triage and response-style skills to explain what I should try and when support is available. Write a short customer reply."}'
+crewai run --inputs '{"messages":"I use the Pro plan and cannot sign in. Use the available tools to explain what I should try and when support is available. Write a short customer reply."}'
 ```
 
 ## Passar um histórico de mensagens

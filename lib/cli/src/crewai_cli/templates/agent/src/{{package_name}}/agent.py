@@ -17,7 +17,7 @@ agent = Agent(
         "# Customization\n"
         "Your behavior and capabilities are defined by this project's agent definition, "
         "tools, and skills. Customize these files for the user's needs. "
-        "The included support tools and skills are examples; use them only when relevant. "
+        "The included support tools are examples; use them only when relevant. "
         "Be clear about the capabilities available in this project and do not claim "
         "external actions without a tool result."
     ),

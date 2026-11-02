@@ -1,6 +1,6 @@
 # {{package_name}}
 
-An experimental general-purpose CrewAI Agent with three local example tools and two example skills.
+An experimental general-purpose CrewAI Agent with three local example tools and an empty skills directory.
 The example describes a fictional service and does not access real accounts or external systems.
 Standalone agent project formats and CLI support may change. Use matching preview CLI and SDK builds that include this feature.
 
@@ -23,8 +23,7 @@ The Agent defaults to `openai/gpt-6.1-sol` through the Responses API; set `MODEL
     │   ├── lookup_plan.py
     │   └── support_checklist.py
     └── skills/
-        ├── support-triage/SKILL.md
-        └── response-style/SKILL.md
+        └── .gitkeep
 ```
 
 ## Run the reference Agent
@@ -34,7 +33,7 @@ Copy `.env.example` to `.env` and set `OPENAI_API_KEY`, then run:
 ```sh
 crewai install
 crewai run --inputs '{"messages":"Use support_hours to tell me when support is available."}'
-crewai run --inputs '{"messages":"I use the Pro plan and cannot sign in. Use the support-triage and response-style skills to explain what I should try and when support is available. Write a short customer reply."}'
+crewai run --inputs '{"messages":"I use the Pro plan and cannot sign in. Use the available tools to explain what I should try and when support is available. Write a short customer reply."}'
 crewai deploy validate
 ```
 
@@ -42,7 +41,7 @@ crewai deploy validate
 
 ## Customize the Agent
 
-The default identity is general-purpose. Edit its role, goal, and backstory to specialize it, and add, replace, or remove tools and skills to match the task. The included support examples apply only when relevant.
+The default identity is general-purpose. Edit its role, goal, and backstory to specialize it, and add, replace, or remove tools and skills to match the task. The included support tools apply only when relevant. No skills are installed by default.
 
 ## Example tools and skills
 
@@ -55,12 +54,9 @@ The default identity is general-purpose. Edit its role, goal, and backstory to s
 The plan and checklist tools demonstrate typed Pydantic argument schemas and JSON results.
 Unknown values return the available choices. Replace these example facts with your own application logic.
 
-| Skill | When to use it |
-| --- | --- |
-| `support-triage` | Multi-step questions requiring tool results and an escalation path |
-| `response-style` | Turning verified facts into a concise customer reply |
-
-Skills begin as a metadata catalog. The Agent can call its `load_skill` tool to read a relevant skill's full instructions.
+The `skills/` directory starts empty, with only `.gitkeep` to preserve it in Git and packaged builds.
+Add your own `skills/<name>/SKILL.md` with `name` and `description` frontmatter.
+Once added, skills begin as a metadata catalog; the Agent can call `load_skill` to read relevant instructions on demand.
 
 Edit `src/{{package_name}}/agent.py` to configure the exported `agent`.
 Import new tools from `.tools` and add their instances to `tools=[...]`.

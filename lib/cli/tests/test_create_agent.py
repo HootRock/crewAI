@@ -71,7 +71,7 @@ def test_agent_archive_includes_source_and_excludes_secrets(
             names = project_zip.namelist()
             assert "src/support_agent/agent.py" in names
             assert "src/support_agent/tools/lookup_plan.py" in names
-            assert "src/support_agent/skills/support-triage/SKILL.md" in names
+            assert "src/support_agent/skills/.gitkeep" in names
             assert "pyproject.toml" in names
             assert ".env.example" in names
             assert ".env" not in names
@@ -230,7 +230,7 @@ def test_create_config_agent_loads_and_archives_without_source_package(
         with zipfile.ZipFile(archive) as project_zip:
             assert definition in project_zip.namelist()
             assert "tools/lookup_plan.py" in project_zip.namelist()
-            assert "skills/support-triage/SKILL.md" in project_zip.namelist()
+            assert "skills/.gitkeep" in project_zip.namelist()
             assert not any(name.startswith("src/") for name in project_zip.namelist())
     finally:
         archive.unlink()
@@ -276,7 +276,6 @@ def test_reference_scaffold_tools_and_skills_work_outside_project_root(
     import json
 
     from crewai.project import load_agent_project
-    from crewai.skills.models import METADATA
     from crewai.skills.tool import create_skill_loader_tool
     from crewai_cli.create_agent import create_agent
 
@@ -299,12 +298,12 @@ def test_reference_scaffold_tools_and_skills_work_outside_project_root(
     assert len(checklist["steps"]) == 3
     assert "SSO" in checklist["steps"][0]
     assert "error" in json.loads(tools["support_checklist"].run(topic="unknown"))
-    assert {skill.name for skill in agent.skills} == {"support-triage", "response-style"}
-    assert all(skill.disclosure_level == METADATA for skill in agent.skills)
-    loader = create_skill_loader_tool(agent.skills, source=agent)
-    instructions = loader.run(skill_name="support-triage")
-    assert "lookup_plan" in instructions and "support_checklist" in instructions
-    assert "three immediate next steps" in loader.run(skill_name="response-style")
+    skills_dir = tmp_path / "reference_agent" / (
+        "src/reference_agent/skills" if format == "python" else "skills"
+    )
+    assert [path.name for path in skills_dir.iterdir()] == [".gitkeep"]
+    assert not agent.skills
+    assert create_skill_loader_tool(agent.skills, source=agent) is None
 
 
 @pytest.mark.parametrize("suffix", ["json", "yml", "yaml"])
