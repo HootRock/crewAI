@@ -208,4 +208,33 @@ Para uma implantação com um runtime Enterprise compatível com a prévia, use 
 {"inputs": {"messages": "What are the support hours?"}}
 ```
 
-O protótipo gerenciado usa o ciclo de vida existente de kickoff/status com autenticação e um adaptador Flow interno para acompanhar a execução. Chat/streaming, suporte a restauração/checkpoints, provisionamento nativo de Agent e compatibilidade com contêineres e versões de produção permanecem fora do escopo verificado desta prévia.
+## Implantações gerenciadas conversacionais
+
+Com o runtime Enterprise experimental compatível, o adaptador interno de Agent define `conversational = True`. O chat usa o Agent configurado e suas ferramentas a cada turno. Inicie uma sessão e reutilize seu `session_id` nas próximas mensagens:
+
+```http
+POST /chat/start
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{}
+```
+
+```http
+POST /chat/<session_id>/message
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{"message": "Remember that my project is Cedar Finch.", "stream": false}
+```
+
+```http
+GET /chat/<session_id>/history
+Authorization: Bearer <deployment-token>
+```
+
+Cada mensagem retorna um `kickoff_id` distinto; consulte `/status/<kickoff_id>` até o turno terminar antes de enviar outra mensagem. A sessão preserva o histórico de usuário/assistente e o passa para um novo Agent a cada turno. A transcrição contém a resposta pública, enquanto os resultados da execução preservam a saída estruturada do Agent e o uso. A duração e a persistência da sessão dependem da configuração de armazenamento do runtime implantado. Sessões distintas têm históricos separados.
+
+`POST /kickoff` continua disponível para execuções independentes. Localmente, `crewai run --inputs` continua sendo um único kickoff; ele não cria uma sessão de chat gerenciada. Não é necessário escrever um Flow ou `main.py`, nem adicionar um campo conversacional a `agent.yaml` ou `agent.json`.
+
+Esta prévia foi exercitada com uma API nativa e um worker Celery. Streaming de tokens, suporte a restauração/checkpoints, provisionamento nativo de Agent e compatibilidade com contêineres e versões de produção permanecem fora do escopo verificado.

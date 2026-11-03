@@ -208,4 +208,33 @@ crewai deploy validate
 {"inputs": {"messages": "What are the support hours?"}}
 ```
 
-관리형 프로토타입은 인증을 요구하는 기존 kickoff/status 수명 주기와 실행 추적용 내부 Flow 어댑터를 사용합니다. 채팅/스트리밍, 복원/체크포인트 지원, Agent 전용 프로비저닝, 프로덕션 컨테이너 및 릴리스 호환성은 이 미리 보기에서 검증된 범위에 포함되지 않습니다.
+## 대화형 관리형 배포
+
+호환되는 실험적 Enterprise 런타임에서 내부 Agent 어댑터는 `conversational = True`를 설정합니다. 채팅은 매 턴마다 설정된 Agent와 도구를 사용합니다. 세션을 시작한 뒤 후속 메시지에 같은 `session_id`를 사용하세요:
+
+```http
+POST /chat/start
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{}
+```
+
+```http
+POST /chat/<session_id>/message
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{"message": "Remember that my project is Cedar Finch.", "stream": false}
+```
+
+```http
+GET /chat/<session_id>/history
+Authorization: Bearer <deployment-token>
+```
+
+각 메시지는 서로 다른 `kickoff_id`를 반환합니다. 다음 메시지를 보내기 전에 `/status/<kickoff_id>`를 조회하여 턴이 완료될 때까지 기다리세요. 세션은 사용자/어시스턴트 기록을 보존하고 매 턴 새 Agent에 전달합니다. 대화 기록에는 사용자에게 보여 줄 답변만 포함되며, 실행 결과에는 구조화된 Agent 출력과 사용량이 유지됩니다. 세션 수명과 영속성은 배포된 런타임의 저장소 설정에 따라 달라집니다. 세션별 기록은 분리됩니다.
+
+`POST /kickoff`는 독립적인 실행에 계속 사용할 수 있습니다. 로컬 `crewai run --inputs`는 kickoff를 한 번 실행하며 관리형 채팅 세션을 만들지 않습니다. Flow나 `main.py`를 작성하거나 `agent.yaml` 또는 `agent.json`에 대화 설정 필드를 추가할 필요가 없습니다.
+
+이 미리 보기는 네이티브 API와 Celery 워커로 검증되었습니다. 토큰 스트리밍, 복원/체크포인트 지원, Agent 전용 프로비저닝, 프로덕션 컨테이너 및 릴리스 호환성은 검증된 범위에 포함되지 않습니다.

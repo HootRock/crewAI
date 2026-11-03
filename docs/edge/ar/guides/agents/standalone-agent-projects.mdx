@@ -208,4 +208,33 @@ crewai deploy validate
 {"inputs": {"messages": "What are the support hours?"}}
 ```
 
-يستخدم النموذج الأولي المُدار دورة kickoff/status الحالية التي تتطلب المصادقة، ومحوّل Flow داخليًا لتتبع التنفيذ. لا يزال دعم المحادثة/البث، والاستعادة/نقاط التحقق، وتوفير بنية تشغيل مخصصة لـ Agent، والتوافق مع حاويات الإنتاج وإصداراته خارج النطاق الذي جرى التحقق منه في هذه المعاينة.
+## عمليات نشر مُدارة تدعم المحادثة
+
+مع بيئة تشغيل Enterprise التجريبية المتوافقة، يضبط محوّل Agent الداخلي `conversational = True`. تستخدم المحادثة Agent المحدد وأدواته في كل دور. ابدأ جلسة، ثم أعد استخدام `session_id` في الرسائل اللاحقة:
+
+```http
+POST /chat/start
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{}
+```
+
+```http
+POST /chat/<session_id>/message
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{"message": "Remember that my project is Cedar Finch.", "stream": false}
+```
+
+```http
+GET /chat/<session_id>/history
+Authorization: Bearer <deployment-token>
+```
+
+تعيد كل رسالة `kickoff_id` مختلفًا؛ استعلم عن `/status/<kickoff_id>` حتى يكتمل الدور قبل إرسال رسالة أخرى. تحتفظ الجلسة بسجل رسائل المستخدم والمساعد وتمرره إلى Agent جديد في كل دور. يتضمن سجل المحادثة الإجابة الموجهة للمستخدم، بينما تحتفظ نتائج التنفيذ بمخرجات Agent المنظمة وبيانات الاستخدام. تعتمد مدة الجلسة واستمرارية بياناتها على إعدادات التخزين في بيئة التشغيل المنشورة. لكل جلسة سجل منفصل.
+
+يبقى `POST /kickoff` متاحًا لعمليات التنفيذ المستقلة. ينفذ `crewai run --inputs` محليًا استدعاء kickoff واحدًا؛ ولا ينشئ جلسة محادثة مُدارة. لا تحتاج إلى كتابة Flow أو `main.py`، أو إضافة حقل للمحادثة إلى `agent.yaml` أو `agent.json`.
+
+جرى اختبار هذه المعاينة باستخدام API تعمل محليًا وعامل Celery. لا يزال بث الرموز، والاستعادة/نقاط التحقق، وتوفير بنية تشغيل مخصصة لـ Agent، والتوافق مع حاويات الإنتاج وإصداراته خارج النطاق الذي جرى التحقق منه.

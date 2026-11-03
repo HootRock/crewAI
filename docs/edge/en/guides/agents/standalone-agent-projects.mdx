@@ -208,4 +208,33 @@ For a deployment with a compatible preview Enterprise runtime, use the existing 
 {"inputs": {"messages": "What are the support hours?"}}
 ```
 
-The managed prototype uses the existing authenticated kickoff/status lifecycle and an internal Flow adapter for execution tracking. Chat/streaming, restore/checkpoint support, first-class Agent provisioning, and production container/release compatibility remain outside this preview's verified scope.
+## Conversational managed deployments
+
+With the compatible experimental Enterprise runtime, the internal Agent adapter sets `conversational = True`. Chat uses the configured Agent and its tools for every turn. Start a session, then reuse its `session_id` for subsequent messages:
+
+```http
+POST /chat/start
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{}
+```
+
+```http
+POST /chat/<session_id>/message
+Authorization: Bearer <deployment-token>
+Content-Type: application/json
+
+{"message": "Remember that my project is Cedar Finch.", "stream": false}
+```
+
+```http
+GET /chat/<session_id>/history
+Authorization: Bearer <deployment-token>
+```
+
+Each message returns a distinct `kickoff_id`; poll `/status/<kickoff_id>` until the turn completes before sending another message. The session retains user/assistant history and passes it to a fresh Agent each turn. Its transcript contains the public answer, while execution results retain structured Agent output and usage. Session lifetime and persistence depend on the deployed runtime's storage configuration. Separate sessions have separate histories.
+
+`POST /kickoff` remains available for independent executions. Local `crewai run --inputs` remains a single kickoff; it does not create a managed chat session. You do not need to write a Flow or `main.py`, or add a conversational field to `agent.yaml` or `agent.json`.
+
+This preview has been exercised with a native API and Celery worker. Token streaming, restore/checkpoint support, first-class Agent provisioning, and production container/release compatibility remain outside its verified scope.
